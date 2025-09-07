@@ -1,0 +1,55 @@
+version: "3.9"
+services:
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile.dev
+    container_name: api-gateway
+    volumes:
+      - ./api-gateway:/src
+      - api_node_modules:/src/node_modules
+    ports:
+      - "8001:3000"
+    env_file:
+      - ./api-gateway/.env
+    networks:
+      - veren
+
+  submission-service:
+    build:
+      context: ./submission-service
+      dockerfile: Dockerfile.dev
+    container_name: submission-service
+    volumes:
+      - ./submission-service:/src
+      - submission_node_modules:/src/node_modules
+    ports:
+      - "8002:3000"
+    env_file:
+      - ./submission-service/.env
+    networks:
+      - veren
+
+  extractor-service:
+    build:
+      context: ./extractor-service
+      dockerfile: Dockerfile.dev
+    container_name: extractor-service
+    volumes:
+      - ./extractor-service:/src
+      - extractor_node_modules:/src/node_modules
+    ports:
+      - "8003:3000"
+    env_file:
+      - ./extractor-service/.env
+    networks:
+      - veren
+
+volumes:
+  api_node_modules:
+  submission_node_modules:
+  extractor_node_modules:
+
+networks:
+  veren:
+    external: true
