@@ -1,8 +1,7 @@
 import { Worker } from "bullmq";
 import { Redis } from "ioredis";
 import logger from "../../logger/logger.js";
-import { buildFrontend } from "../../services/distributionHandler/BuildDistFolder.js";
-import { uploadToS3 } from "../../utils/S3/UploadRepositoryToS3.js";
+import { buildFrontend } from "../../services/distributionHandler/buildFrontend.js";
 import fs from "fs"
 
 const connection = new Redis({
@@ -22,31 +21,42 @@ async function safeExecute<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
 
 const worker = new Worker('buildQueue',
     async (job) => {
-        const { projectId, baseDir, backendDir, frontendDir } = job.data;
-
-        if (!projectId || !baseDir || !backendDir || !frontendDir) {
+        const { url,
+            pathToFolder,
+            repoConfig,
+            token,
+            projectId,
+            dirPath,
+            cloneSkipped} = job.data;
+        console.log("IN QUEUE")
+        if(cloneSkipped){
+            return { buildSkipped: true };
+        }
+        if (!projectId || !pathToFolder || !repoConfig) {
             logger.error("Some data missing in worker of build");
-            return { projectId, baseDir, backendDir, frontendDir, buildSkipped: true };
+            return { buildSkipped: true };
         }
 
-        // CHECK IF DIRECTORIES EXIST
-        if (!fs.existsSync(baseDir) || !fs.existsSync(frontendDir)) {
-            logger.error("Directories do not exist for project: ", projectId);
-            return { projectId, baseDir, backendDir, frontendDir, buildSkipped: true };
+        let repositoryConfig = JSON.parse(JSON.stringify(repoConfig))
+        let directoryPath = JSON.parse(JSON.stringify(dirPath))
+
+        if (!fs.existsSync(dirPath.baseDir)) {
+            logger.error("Directory do not exist for project: ", projectId);
+            return { projectId, buildSkipped: true };
         }
+        // Safe execute buildFrontend
+        const frontendDist = await safeExecute(() => buildFrontend(dirPath.frontendDir, projectId, repositoryConfig.buildCommand.FrontendBuildCommand, repositoryConfig.envs), null);
 
-       // Safe execute buildFrontend
-        const distFolder = await safeExecute(() => buildFrontend(baseDir), null);
+        // safe execute buildBackend
+        const backendDist = await safeExecute(() => buildFrontend(dirPath.backendDir, projectId, 
+        repositoryConfig.buildCommand.BackendBuildCommand, repositoryConfig.envs), null);
 
-        if (!distFolder) {
+        if (!frontendDist || !backendDist) {
             logger.info(`Build was skipped for project ${projectId}`);
-            return { projectId, baseDir, backendDir, frontendDir, buildSkipped: true };
+            return { projectId, dirPath, buildSkipped: true };
         }
 
-        // Upload to S3
-        await safeExecute(() => uploadToS3(distFolder, projectId), null);
-
-        return { projectId, baseDir, backendDir, frontendDir, buildSkipped: false }
+        return { projectId,dirPath, buildSkipped: false }
 
     }, { connection }
 )

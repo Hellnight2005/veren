@@ -10,6 +10,8 @@ services:
       - ./api-gateway/.env
     networks:
       - veren
+    depends_on:
+      - internal-redis
 
   submission-service:
     build:
@@ -26,7 +28,6 @@ services:
     command: [ "npm", "run", "dev" ]
     networks:
       - veren
-  
 
   extractor-service:
     build:
@@ -37,6 +38,7 @@ services:
       - ./extractor-service:/src
       - extractor_node_modules:/src/node_modules
       - clones-data:/src/src/clones
+      - ./extractor-service/clones:/src/src/clones
     ports:
       - "8003:3000"
     env_file:
@@ -44,6 +46,8 @@ services:
     command: [ "npm", "run", "dev" ]
     networks:
       - veren
+    depends_on:
+      - internal-redis
 
   routing-service:
     build:
@@ -78,6 +82,8 @@ services:
     command: [ "npm", "run", "dev" ]
     networks:
       - veren
+    depends_on:
+      - internal-redis
 
   clone-worker:
     build:
@@ -94,24 +100,44 @@ services:
     networks:
       - veren
     depends_on:
-      - redis
+      - internal-redis
 
   build-worker:
     build:
-      context: ./backend-service
-      dockerfile: Dockerfile.dev
+      context: ./build-worker
+      dockerfile: Dockerfile
+    privileged: true
     container_name: build-worker
-    command: [ "npm", "run", "build:worker" ]
     volumes:
-      - ./backend-service:/src
-      - backend_node_modules:/src/node_modules
+      - /var/run/docker.sock:/var/run/docker.sock
       - clones-data:/src/src/clones
+      - backend_node_modules:/src/node_modules
+      - ./backend-service:/src
     env_file:
       - ./backend-service/.env
     networks:
       - veren
     depends_on:
-      - redis 
+      - internal-redis
+
+  # assign-worker:
+  #   build:
+  #     context: ./extractor-service
+  #     dockerfile: Dockerfile.dev
+  #   container_name: assign-worker
+  #   command: [ "npm", "run", "assign:worker" ]
+  #   volumes:
+  #     - ./extractor-service:/src
+  #     - extractor_node_modules:/src/node_modules
+  #     - clones-data:/src/src/clones
+  #     - ./extractor-service/src/services/assignFile/public:/src/src/services/assignFile/public
+  #   env_file:
+  #     - ./extractor-service/.env
+  #   networks:
+  #     - veren
+  #   depends_on:
+  #     - internal-redis
+
   # postgres:
   #   image: postgres:15
   #   container_name: postgres
@@ -124,15 +150,14 @@ services:
   #   networks:
   #     - veren
 
-  redis:
+  internal-redis:
     image: redis:7
-    container_name: notification_redis
+    container_name: notification_internal_redis
     restart: always
-    ports:
-      - "6379:6379"
     networks:
       - veren
-
+    volumes:
+    - redis-data:/data
 
 volumes:
   api_node_modules:
@@ -141,7 +166,10 @@ volumes:
   routing_node_modules:
   backend_node_modules:
   pgdata:
+  dind-storage:
   clones-data:
+  redis-data:
+
 
 
 networks:

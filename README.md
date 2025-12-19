@@ -6,11 +6,11 @@ ARCHITECTURE
 ```bash
 User
  │
- │ Login & submit GitHub URL
+#  │ Login & submit GitHub URL
  ▼
 API-Gateway
  │
- │ Forwards request to Submission-Service
+#  │ Forwards request to Submission-Service
  ▼
 Submission-Service
  │
@@ -21,7 +21,7 @@ Submission-Service
  ▼
 Extractor-Service
  ├─ Clone-Worker
- │    └─ git clone repo
+#  │    └─ git clone repo
  └─ Assign-Worker
       ├─ Generate frontend Dockerfile
       ├─ Generate vite.config.js
