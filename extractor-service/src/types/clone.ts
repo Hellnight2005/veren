@@ -1,8 +1,12 @@
+interface DirPath {
+    baseDir: string,
+    frontendDir: string,
+    backendDir: string
+}
+
 type CloneSuccess = {
-    projectId: string;
-    baseDir: string;
-    backendDir: string;
-    frontendDir: string;
+    projectId:string,
+    dirPath: DirPath,
     cloneSkipped?: false;
 }
 

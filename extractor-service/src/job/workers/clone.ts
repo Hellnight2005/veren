@@ -15,15 +15,19 @@ const connection = new Redis({
 const worker = new Worker(
     "cloneQueue",
     async (job) => {
-        const { repoUrl, frontend, backend, id, token } = job.data || {};
+        const { url,
+            pathToFolder,
+            repoConfig,
+            id,
+            token } = job.data || {};
 
-        if (!repoUrl || !frontend || !backend || !id || !token) {
+        if (!url || !pathToFolder || !repoConfig || !id || !token) {
             logger.error("Missing data in cloneQueue", job.data)
             return { cloneSkipped: true };
         }
 
         const result = await safeExecute<CloneResult>(
-            () => cloneRepo(repoUrl, frontend, backend, id, token),
+            () => cloneRepo(url, id, token),
             { cloneSkipped: true }
         );
 
@@ -33,38 +37,54 @@ const worker = new Worker(
         }
 
         return {
-            ...result, cloneSkipped: result.cloneSkipped?? false
+            url,
+            pathToFolder,
+            repoConfig,
+            token,
+            ...result,
         }
     }, { connection }
 )
 
 worker.on('completed', async (job, result) => {
     try {
-        const { projectId, baseDir, backendDir, frontendDir, cloneSkipped } = result;
-
+        const {
+            url,
+            pathToFolder,
+            repoConfig,
+            token,
+            projectId,
+            dirPath,
+            cloneSkipped
+        } = result;
         if (cloneSkipped) {
             logger.info(`Cloning was skipped for job ${job.id}, not queuing build.`);
             return
         }
 
-        if (!projectId || !baseDir || !backendDir || !frontendDir) {
+        if (!projectId || !dirPath) {
             logger.error("DATA MISSING ON CLONE COMPLETE");
             return;
         }
-  
+
         logger.info(`Job ${job.id} completed`);
 
         await safeExecute(
             () => axios.post(
                 "http://backend-service:3000/api/v1/operational",
                 {
-                    ...result
+                    url,
+                    pathToFolder,
+                    repoConfig,
+                    token,
+                    projectId,
+                    dirPath,
+                    cloneSkipped,
                 },
                 { timeout: 10000 }
             ),
             null
         );
-       
     } catch (error) {
         logger.error("Error in completed handler:", error);
 
@@ -76,9 +96,9 @@ worker.on('failed', async (job: any, err: any) => {
 })
 
 process.on("uncaughtException", (err) => {
-  logger.error("Uncaught exception in clone worker:", err);
+    logger.error("Uncaught exception in clone worker:", err);
 });
 
 process.on("unhandledRejection", (reason) => {
-  logger.error("Unhandled promise rejection in clone worker:", reason);
+    logger.error("Unhandled promise rejection in clone worker:", reason);
 });
