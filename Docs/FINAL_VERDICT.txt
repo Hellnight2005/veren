@@ -1,0 +1,89 @@
+User / Frontend
+     |
+     v
+1. App Submission & Auth Service
+     |  - OAuth / GitHub login
+     |  - Repo URL submission + metadata
+     |  - Permissions & user profiles
+     v
+2. Repo Extraction Service
+     |  - Clone repo securely
+     |  - Recursive folder/file scanning
+     |  - Detect frontend/backend/multi-service
+     |  - Parse docker-compose.yml if exists
+     v
+3. Project Analysis & Classification Service
+     |  - Detect framework type (Next.js, React, Vue)
+     |  - Detect language (Node, Python, Go, Rust)
+     |  - Detect CI/CD configs
+     |  - Suggest optimization (caching, build improvements)
+     v
+4. Dependency Resolver & Security Scanner
+     |  - Scan for vulnerabilities (Snyk, npm audit, pip-audit)
+     |  - Resolve dependencies & versions
+     |  - Generate secure build plan
+     v
+5a. Frontend Build & Deployment Service (Vercel-style)
+     |  - Auto-detect framework
+     |  - Build static / serverless assets
+     |  - Deploy to edge/CDN
+     |  - Provide preview URL
+     v
+5b. Backend Build & Deployment Service (Render-style)
+     |  - Single service → Docker build & deploy
+     |  - Multi-service → run docker-compose inside DinD/K8s
+     |  - Expose APIs & manage ports
+     v
+6. Container Registry Service
+     |  - Store built Docker images
+     |  - Versioning & rollback support
+     v
+7. Orchestration & Multi-Tenant Isolation Service
+     |  - Kubernetes namespace per app
+     |  - Resource quotas per tenant
+     |  - Network policies & sandboxing
+     v
+8. CI/CD Service
+     |  - GitHub / GitLab integration
+     |  - Webhook triggers → auto-deploy
+     |  - Previews for PRs / branches
+     v
+9. Observability & Monitoring Service
+     |  - Centralized logs (ELK/Loki)
+     |  - Metrics (Prometheus + Grafana)
+     |  - Health checks & alerts
+     v
+10. Traffic & CDN Management Service
+     |  - Custom domain mapping
+     |  - SSL auto-provision (Let’s Encrypt)
+     |  - Edge caching & global load balancing
+     v
+11. API Gateway / Ingress Service
+     |  - Route frontend/backend requests
+     |  - Authentication, rate limiting
+     |  - JWT token issuance
+     v
+12. Secrets & Config Management Service
+     |  - Store environment variables & API keys securely
+     |  - Auto-inject into containers
+     v
+13. Billing & Usage Tracking Service
+     |  - CPU, memory, bandwidth quotas
+     |  - Simulate Stripe integration
+     |  - Over-usage alerts & notifications
+     v
+14. Notifications & Collaboration Service
+     |  - Slack/email/web notifications
+     |  - Share deployment preview links
+     |  - Invite collaborators
+     v
+15. Unified App Dashboard
+     |  - Frontend + backend URLs
+     |  - Logs & metrics per service
+     |  - Billing & usage info
+     |  - Deployment history & rollback
+     v
+16. AI/Optimization Advisor (Optional, CV wow factor)
+     |  - Suggest build optimizations
+     |  - Auto-scaling recommendations
+     |  - Security vulnerability fixes
