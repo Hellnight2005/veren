@@ -1,43 +1,50 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
 import fetch from "node-fetch";
+import ApiError from "../utils/api-utils/ApiError.js";
+
+import githubAuthService from "../services/githubAuth.service.js";
+import setAuthCookies from "../utils/auth/authCookies.js";
+import asyncHandler from "../utils/api-utils/asyncHandler.js";
+import User from "../models/user.model.js";
+import ApiResponse from "../utils/api-utils/ApiResponse.js";
 
 // LOGIN CONTROLLER
 
-export async function LoginController(req: Request, res: Response) {
+const LoginController = asyncHandler(async (req: Request, res: Response) => {
     const state = crypto.randomBytes(16).toString("hex");
     req.session.oauthState = state;
 
     const clientId = process.env.GITHUB_CLIENT_ID;
 
     if (!clientId) {
-        return res.status(500).json({ success: false, message: "GitHub Client ID not configured" });
+        throw new ApiError(500, "GitHub Client ID not configured");
     }
 
-    const redirectUri = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo&state=${state}`;
-    res.redirect(redirectUri);
-}
+    const redirectUri = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo user:email read:user&state=${state}`;
+    return res.redirect(redirectUri);
+})
 
 // CALLBACK CONTROLLER FOR GETTING GITHUB AUTH TOKEN
 
-export async function CallbackController (req: Request, res: Response){
+const CallbackController= asyncHandler(async (req: Request, res: Response) => {
     if (req.query.state !== req.session.oauthState) {
-        return res.status(400).json({ error: "Invalid state" });
+        throw new ApiError(400, "Invalid state")
     }
 
     const code = req.query.code as string | undefined;
 
     if (!code) {
-        return res.status(400).json({ success: false, message: "Code not provided" });
+        throw new ApiError(400, "Code not provided");
     }
 
     const client_id = process.env.GITHUB_CLIENT_ID;
     const client_secret = process.env.GITHUB_CLIENT_SECRET;
 
     if (!client_id || !client_secret) {
-        return res.status(500).json({ success: false, message: "Missing Github Credentials" });
+        throw new ApiError(500, "Missing Github Credentials");
     }
-
+    let githubToken: string;
     try {
         const tokenResp = await fetch("https://github.com/login/oauth/access_token", {
             method: "POST",
@@ -52,17 +59,55 @@ export async function CallbackController (req: Request, res: Response){
             })
         });
 
-        if(!tokenResp.ok) throw new Error(`Github responded with ${tokenResp.status}`);
+        if (!tokenResp.ok) throw new ApiError(502, `GitHub OAuth failed (${tokenResp.status})`);
 
         const tokenJson = (await tokenResp.json()) as { access_token?: string };
         if (!tokenJson.access_token) {
-            return res.status(400).json({ success: false, message: "Failed to get access token" });
+            throw new ApiError(404, "Failed to get access token");
         }
 
-        req.session.githubToken = tokenJson.access_token;
-        res.redirect(`${process.env.FRONTEND_URL}/profile`);
+        githubToken = tokenJson.access_token;
+
     } catch (err: any) {
+        if (err instanceof ApiError) throw err;
         console.error(err);
-        res.status(500).json({ success: false, message: "Github OAuth Error" });
+        throw new ApiError(500, "GitHub OAuth Error");
     }
-}
+    
+    const {accessToken, refreshToken} = await githubAuthService(req, githubToken);
+    
+    setAuthCookies(res, accessToken,refreshToken);
+
+    req.session.githubToken = githubToken;
+
+    return res.redirect(`${process.env.FRONTEND_URL}/profile`);
+})
+
+const logOutController = asyncHandler(async (req:Request, res:Response)=> {
+    // if user is logged in, increment tokenVersion to invalidate old refresh tokens
+    if(req.session.githubToken){
+        const githubId = req.session.githubId;
+
+        const user = await User.findOne({githubId: githubId });
+
+        if(user){
+            user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+            await user.save();
+        }
+    }
+
+    // Destroy session
+    req.session.destroy(err => {
+        if(err){
+            console.error("Error while destroying session: ", err);
+        }
+    });
+
+    // Clear JWT cookies
+    res.clearCookie("accessToken")
+    res.clearCookie("refreshToken")
+
+    return res.status(200).json(new ApiResponse(200,{}, "Logged Out" ));
+})
+
+export {LoginController, CallbackController, logOutController}

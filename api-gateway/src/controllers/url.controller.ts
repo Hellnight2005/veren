@@ -2,9 +2,10 @@ import { Request, Response } from "express";
 import axios from "axios";
 
 // HANDLE URL PATH (FORWARD FOR PREPROCESSING)
-export async function handleUrl(req: Request, res: Response) {
+export async function handleFirstDeployment(req: Request, res: Response) {
   try {
     const {
+      projectName,
       url,
       frontendPath,
       backendPath,
@@ -29,8 +30,8 @@ export async function handleUrl(req: Request, res: Response) {
         backendEnv
       },
       buildCommand: {
-        FrontendBuildCommand,
-        BackendBuildCommand,
+        FrontendBuildCommand: "npm run build",
+        BackendBuildCommand: "npm run build",
       }
     }
 
@@ -41,6 +42,7 @@ export async function handleUrl(req: Request, res: Response) {
     const response = await axios.post(
       "http://submission-service:3000/api/v1/url",
       {
+        projectName,
         url,
         pathToFolder,
         repoConfig,
@@ -58,4 +60,9 @@ export async function handleUrl(req: Request, res: Response) {
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }
+}
+
+
+export async function  handleEnvironmentVariable(req:Request, res: Response) {
+  
 }
