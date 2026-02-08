@@ -1,12 +1,10 @@
+import { env } from "./config/env.js";
 import app from "./app.js";
-import dotenv from "dotenv";
 import logger from "./logger/logger.js";
 import { connectDB } from "./db/index.js";
 import { pollQueue } from "./consumer.js";
 
-dotenv.config({ path: './.env' });
-
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = env.PORT;
 
 async function init() {
     await connectDB();
